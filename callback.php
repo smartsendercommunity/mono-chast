@@ -61,6 +61,23 @@ if ($result["state"] != true) {
   exit;
 }
 
+// Підтвердження заявки
+if ($input["order_sub_state"] == "WAITING_FOR_STORE_CONFIRM") {
+    $confirm = [
+    "order_id" => $input["order_id"]
+    ];
+    
+    $headers[] = "signature: ".base64_encode(hash_hmac("sha256", json_encode($confirm, JSON_UNESCAPED_UNICODE), $monoSecret, true));
+    $headers[] = "store-id: ".$monoId;
+
+    $response = json_decode(send_request($monoLink."/api/order/confirm", $headers, "POST", $confirm), true);
+    $log["confirmation"] = $response;
+    if ($response["state"] == "SUCCESS") {
+        // Підміна нового статусу
+        $input = $response;
+    }
+}
+
 // Запуск триггера в Smart Sender
 $headers[] = "Authorization: Bearer " . $ssToken;
 if ($orderData["actions"][strtolower($input["state"])][strtolower($input["order_sub_state"])] != NULL) {
